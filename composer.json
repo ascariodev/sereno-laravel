@@ -6,8 +6,10 @@
     "require": {
         "php": "^8.3",
         "illuminate/contracts": "^13.0",
+        "illuminate/events": "^13.0",
         "illuminate/http": "^13.0",
         "illuminate/log": "^13.0",
+        "illuminate/queue": "^13.0",
         "illuminate/support": "^13.0",
         "monolog/monolog": "^3.10"
     },
