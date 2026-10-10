@@ -27,6 +27,13 @@
             "Ascario\\Sereno\\Tests\\": "tests/"
         }
     },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Ascario\\Sereno\\SerenoServiceProvider"
+            ]
+        }
+    },
     "scripts": {
         "test": "phpunit"
     },
