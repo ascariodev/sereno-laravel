@@ -14,10 +14,15 @@ class CreateSerenoLogger
     {
         $fallbackChannel = trim((string) config('sereno.fallback_channel'));
 
+        $levelName = trim((string) ($config['level'] ?? ''));
+        if ($levelName === '') {
+            $levelName = trim((string) config('sereno.level'));
+        }
+
         $handler = new SerenoLogHandler(
             config('sereno.url'),
             config('sereno.key'),
-            Level::fromName(ucfirst(strtolower((string) ($config['level'] ?? config('sereno.level') ?? 'debug')))),
+            Level::fromName(ucfirst(strtolower($levelName === '' ? 'debug' : $levelName))),
             timeout: config('sereno.timeout'),
             fallbackChannel: $fallbackChannel === '' ? SerenoLogHandler::DEFAULT_FALLBACK_CHANNEL : $fallbackChannel,
         );

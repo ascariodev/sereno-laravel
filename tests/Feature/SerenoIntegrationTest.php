@@ -8,6 +8,7 @@ use Ascario\Sereno\Tests\TestCase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Monolog\Level;
 
 class SerenoIntegrationTest extends TestCase
 {
@@ -83,6 +84,17 @@ class SerenoIntegrationTest extends TestCase
         $this->assertInstanceOf(SerenoLogHandler::class, $handler);
         $property = new \ReflectionProperty($handler, 'fallbackChannel');
         $this->assertSame('daily', $property->getValue($handler));
+    }
+
+    public function test_nivel_vacio_se_resuelve_como_debug(): void
+    {
+        config(['sereno.url' => self::URL, 'sereno.key' => self::KEY, 'sereno.level' => '', 'logging.channels.sereno.level' => '']);
+        Log::forgetChannel('sereno');
+
+        $handler = Log::channel('sereno')->getLogger()->getHandlers()[0];
+
+        $this->assertInstanceOf(SerenoLogHandler::class, $handler);
+        $this->assertSame(Level::Debug, $handler->getLevel());
     }
 
     private function flush(): void
