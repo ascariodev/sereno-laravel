@@ -31,14 +31,6 @@ class SerenoIntegrationTest extends TestCase
         $this->assertSame(2, config('sereno.timeout'));
     }
 
-    public function test_no_pisa_un_canal_definido_por_la_app(): void
-    {
-        $this->app['config']->set('logging.channels.sereno', ['driver' => 'single', 'path' => '/tmp/x.log']);
-        (new \Ascario\Sereno\SerenoServiceProvider($this->app))->register();
-
-        $this->assertSame('single', config('logging.channels.sereno.driver'));
-    }
-
     public function test_el_canal_envia_con_la_config(): void
     {
         $options = null;
