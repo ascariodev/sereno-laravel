@@ -85,11 +85,28 @@ class InstallCommand extends Command
 
     private function readVariable(string $contents, string $name): ?string
     {
-        if (preg_match_all('/^'.$name.'=([^\r\n]*)(?=\r?$)/m', $contents, $matches) < 1) {
+        if (preg_match_all($this->linePattern($name), $contents, $matches) < 1) {
             return null;
         }
 
-        return trim(trim(end($matches[1])), '"\'');
+        return trim($this->splitValue(end($matches[1]))[0], '"\'');
+    }
+
+    private function linePattern(string $name): string
+    {
+        return '/^(?:export[ \t]+)?'.$name.'[ \t]*=([^\r\n]*)(?=\r?$)/m';
+    }
+
+    /** @return array{0: string, 1: string} value and trailing inline comment */
+    private function splitValue(string $raw): array
+    {
+        if (preg_match('/\A\s*("(?:[^"\\\\]|\\\\.)*"|\'[^\']*\')(\s+#.*)?\s*\z/', $raw, $quoted) === 1) {
+            return [$quoted[1], $quoted[2] ?? ''];
+        }
+
+        preg_match('/\A\s*(.*?)(\s+#.*)?\s*\z/', $raw, $plain);
+
+        return [$plain[1], $plain[2] ?? ''];
     }
 
     private function setVariable(string $contents, string $name, string $value): string
@@ -98,8 +115,8 @@ class InstallCommand extends Command
 
         $count = 0;
         $replaced = preg_replace_callback(
-            '/^'.$name.'=[^\r\n]*(?=\r?$)/m',
-            fn (): string => $line,
+            $this->linePattern($name),
+            fn (array $match): string => $line.$this->splitValue($match[1])[1],
             $contents,
             -1,
             $count,

@@ -195,6 +195,45 @@ class InstallCommandTest extends TestCase
         $this->assertSame("LOG_STACK=single,slack,sereno\nSERENO_KEY=wsk_AbC123xyz\n", $this->readEnv());
     }
 
+    public function test_comentario_en_linea_no_se_pega_al_valor_y_se_conserva(): void
+    {
+        $this->writeEnv("LOG_STACK=\"a,b\" # nota\nSERENO_KEY=wsk_old # mi clave\n");
+
+        $this->install()->assertSuccessful();
+
+        $this->assertSame("LOG_STACK=a,b,sereno # nota\nSERENO_KEY=wsk_AbC123xyz # mi clave\n", $this->readEnv());
+    }
+
+    public function test_comentario_en_linea_sin_comillas_y_crlf(): void
+    {
+        $this->writeEnv("LOG_STACK=a,b # nota\r\n");
+
+        $this->install()->assertSuccessful();
+
+        $this->assertSame("LOG_STACK=a,b,sereno # nota\r\nSERENO_KEY=wsk_AbC123xyz\r\n", $this->readEnv());
+    }
+
+    public function test_export_y_espacios_antes_del_igual_se_reemplazan_sin_duplicar(): void
+    {
+        $this->writeEnv("export SERENO_KEY=wsk_old\nLOG_STACK  =  single\n");
+
+        $this->install()->assertSuccessful();
+
+        $contents = $this->readEnv();
+        $this->assertSame(1, substr_count($contents, 'SERENO_KEY'));
+        $this->assertSame(1, substr_count($contents, 'LOG_STACK'));
+        $this->assertSame("SERENO_KEY=wsk_AbC123xyz\nLOG_STACK=single,sereno\n", $contents);
+    }
+
+    public function test_export_y_espacios_con_crlf(): void
+    {
+        $this->writeEnv("export SERENO_KEY = wsk_old\r\nexport LOG_STACK=single\r\n");
+
+        $this->install()->assertSuccessful();
+
+        $this->assertSame("SERENO_KEY=wsk_AbC123xyz\r\nLOG_STACK=single,sereno\r\n", $this->readEnv());
+    }
+
     public function test_url_con_caracteres_de_interpolacion_se_rechaza(): void
     {
         $this->writeEnv("APP_NAME=Test\n");
