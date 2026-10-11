@@ -3,14 +3,15 @@
 namespace Sereno\Laravel\Console;
 
 use Illuminate\Console\Command;
+use Sereno\Laravel\Support\ConnectionTester;
 
 class InstallCommand extends Command
 {
-    protected $signature = 'sereno:install {key : Source key (wsk_...)} {--url= : Sereno ingest URL}';
+    protected $signature = 'sereno:install {key : Source key (wsk_...)} {--url= : Sereno ingest URL} {--no-test : Skip the test event}';
 
     protected $description = 'Configure Sereno in the .env file and add it to the log stack';
 
-    public function handle(): int
+    public function handle(ConnectionTester $tester): int
     {
         $key = (string) $this->argument('key');
         $url = $this->option('url');
@@ -54,6 +55,14 @@ class InstallCommand extends Command
         if ($channel !== null && $channel !== 'stack') {
             $this->warn("LOG_CHANNEL is \"{$channel}\", not \"stack\": add the \"sereno\" channel to your logging setup by hand.");
         }
+
+        if ($this->option('no-test')) {
+            return self::SUCCESS;
+        }
+
+        $effectiveUrl = $url ?? $this->readVariable($contents, 'SERENO_URL') ?? config('sereno.url');
+
+        TestCommand::report($this, $tester->test($effectiveUrl, $key));
 
         return self::SUCCESS;
     }

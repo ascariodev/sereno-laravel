@@ -2,6 +2,7 @@
 
 namespace Sereno\Laravel\Tests\Feature;
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\PendingCommand;
 use Sereno\Laravel\Tests\TestCase;
 
@@ -16,6 +17,8 @@ class InstallCommandTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Http::fake(['*' => Http::response(['accepted' => 1], 202)]);
 
         $this->dir = sys_get_temp_dir().'/sereno-install-'.bin2hex(random_bytes(6));
         mkdir($this->dir);
