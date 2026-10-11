@@ -7,6 +7,8 @@ use Sereno\Laravel\Logging\CreateSerenoLogger;
 
 class SerenoServiceProvider extends ServiceProvider
 {
+    public const DEFAULT_URL = null;
+
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/sereno.php', 'sereno');
