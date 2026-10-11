@@ -102,7 +102,8 @@ class SerenoIntegrationTest extends TestCase
     {
         config(['sereno.url' => self::URL, 'sereno.key' => self::KEY]);
 
-        $this->expectException(\UnhandledMatchError::class);
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('nope');
 
         (new CreateSerenoLogger)(['level' => 'nope']);
     }
