@@ -4,11 +4,11 @@ namespace Sereno\Laravel\Tests\Unit\Logging;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use Sereno\Laravel\Logging\EventFormatter;
-use Sereno\Laravel\Tests\TestCase;
 use Monolog\Level;
 use Monolog\LogRecord;
 use RuntimeException;
+use Sereno\Laravel\Logging\EventFormatter;
+use Sereno\Laravel\Tests\TestCase;
 
 class EventFormatterTest extends TestCase
 {
