@@ -1,9 +1,9 @@
 <?php
 
-namespace Ascario\Sereno\Tests;
+namespace Sereno\Laravel\Tests;
 
-use Ascario\Sereno\SerenoServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Sereno\Laravel\SerenoServiceProvider;
 
 abstract class TestCase extends Orchestra
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Ascario\Sereno\Logging;
+namespace Sereno\Laravel\Logging;
 
 use Monolog\Level;
 use Monolog\Logger;

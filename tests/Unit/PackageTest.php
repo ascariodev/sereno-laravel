@@ -1,8 +1,8 @@
 <?php
 
-namespace Ascario\Sereno\Tests\Unit;
+namespace Sereno\Laravel\Tests\Unit;
 
-use Ascario\Sereno\Tests\TestCase;
+use Sereno\Laravel\Tests\TestCase;
 
 class PackageTest extends TestCase
 {

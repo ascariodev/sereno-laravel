@@ -1,6 +1,6 @@
 <?php
 
-namespace Ascario\Sereno\Logging;
+namespace Sereno\Laravel\Logging;
 
 use Closure;
 use Illuminate\Contracts\Foundation\Application;
@@ -25,7 +25,7 @@ class SerenoLogHandler extends AbstractHandler
 
     public const DEFAULT_FALLBACK_CHANNEL = 'daily';
 
-    private const INGEST_PATH = '/api/ingest/events';
+    public const INGEST_PATH = '/api/ingest/events';
 
     /**
      * Shared by every instance: while one handler is sending (or reporting a failure), any record that

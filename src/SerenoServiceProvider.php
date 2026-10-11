@@ -1,12 +1,16 @@
 <?php
 
-namespace Ascario\Sereno;
+namespace Sereno\Laravel;
 
-use Ascario\Sereno\Logging\CreateSerenoLogger;
 use Illuminate\Support\ServiceProvider;
+use Sereno\Laravel\Console\InstallCommand;
+use Sereno\Laravel\Console\TestCommand;
+use Sereno\Laravel\Logging\CreateSerenoLogger;
 
 class SerenoServiceProvider extends ServiceProvider
 {
+    public const DEFAULT_URL = null;
+
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/sereno.php', 'sereno');
@@ -23,6 +27,7 @@ class SerenoServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
+            $this->commands([InstallCommand::class, TestCommand::class]);
             $this->publishes([__DIR__.'/../config/sereno.php' => config_path('sereno.php')], 'sereno-config');
         }
     }
