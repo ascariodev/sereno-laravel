@@ -19,10 +19,17 @@ class CreateSerenoLogger
             $levelName = trim((string) config('sereno.level'));
         }
 
+        $levelName = $levelName === '' ? 'debug' : $levelName;
+        try {
+            $level = Level::fromName(ucfirst(strtolower($levelName)));
+        } catch (\UnhandledMatchError) {
+            throw new \InvalidArgumentException("Invalid Sereno log level \"{$levelName}\".");
+        }
+
         $handler = new SerenoLogHandler(
             config('sereno.url'),
             config('sereno.key'),
-            Level::fromName(ucfirst(strtolower($levelName === '' ? 'debug' : $levelName))),
+            $level,
             timeout: config('sereno.timeout'),
             fallbackChannel: $fallbackChannel === '' ? SerenoLogHandler::DEFAULT_FALLBACK_CHANNEL : $fallbackChannel,
         );
