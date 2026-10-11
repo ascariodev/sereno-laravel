@@ -1,67 +1,96 @@
-# sereno-laravel
+# Sereno for Laravel
 
 Sends Laravel logs to a Sereno project channel. It adds a Monolog handler and a ready-to-use `sereno` log channel
-that posts events to the Sereno ingest endpoint (`POST {SERENO_LOG_URL}/api/ingest/events`) with a project API key.
+that posts events to the Sereno ingest endpoint (`POST {SERENO_URL}/api/ingest/events`) with a source API key.
 
-Requirements: PHP 8.3+ and Laravel 13.
+## Requirements
+
+- PHP 8.3 or newer
+- Laravel 13 (`illuminate/*` `^13.0`)
 
 ## Installation
 
-The package is not on Packagist. Install it from its Gitea repository with a `vcs` repository entry:
+Create a project in Sereno, open its Integrations page and choose "Create log source". The dialog shows the source
+key (`wsk_...`) only once; if you lose it, rotate the key. Then, in your Laravel application:
 
 ```bash
-composer config repositories.sereno vcs https://gitea.ascario.dev/ascario/sereno-laravel.git
-composer require ascario/sereno-laravel:^0.1
-```
-
-This adds the following to your `composer.json`:
-
-```json
-"repositories": [
-    { "type": "vcs", "url": "https://gitea.ascario.dev/ascario/sereno-laravel.git" }
-]
+composer require sereno/laravel
+php artisan sereno:install wsk_your_key --url=https://your-sereno-api.example.com
 ```
 
 The service provider is registered by Laravel package auto-discovery.
 
-### Private repository access
+`--url` is the base URL of the Sereno API, without a path. The command accepts it missing, but pass it for now:
+the package has no default URL yet, and without a URL the channel sends nothing (the test reports the missing URL).
 
-If the repository is private, Composer needs credentials for the Gitea host. Composer has no dedicated Gitea token
-setting (`gitea-token` does not exist; `forgejo-token` is for Forgejo). Use `http-basic` with your Gitea username
-and a personal access token (Gitea: Settings, Applications, with the `read:repository` scope) as the password:
+### What `sereno:install` does
+
+It edits only your `.env` file (never PHP files):
+
+- Writes or replaces `SERENO_KEY`, and `SERENO_URL` when `--url` is given.
+- Adds `sereno` to `LOG_STACK` without duplicating it. If `LOG_STACK` is missing it is treated as `single`, so the
+  result is `single,sereno`.
+- Then sends a test event to Sereno and reports the result (see below).
+
+Options:
+
+| Option | Description |
+|---|---|
+| `--url=` | Base URL of the Sereno API. Must be a valid URL without `$`, quotes, backslashes or backticks. |
+| `--no-test` | Skip the test event. |
+
+The command fails (exit code 1) when the key does not match `wsk_` followed by letters and digits, when `--url` is
+not a valid URL, or when there is no writable `.env` file (create it with `cp .env.example .env`). Nothing is
+written in those cases.
+
+**If `.env` defines `LOG_CHANNEL` and it is not `stack`**, the installer warns you (no warning when the variable is absent): the `LOG_STACK` change only takes effect through
+the `stack` channel. Either set `LOG_CHANNEL=stack`, or add `sereno` to the channel you use in `config/logging.php`,
+or send to it directly:
+
+```php
+Log::channel('sereno')->error('Payment failed', ['order_id' => 42]);
+```
+
+Laravel's default `stack` channel reads `LOG_STACK` from the environment. If your `config/logging.php` has a
+hardcoded `channels` list for `stack`, add `'sereno'` to it yourself.
+
+If you run `config:cache`, rebuild it after the install.
+
+### Testing the connection
+
+`sereno:install` ends by sending a test event (level `info`, message "Sereno connection test") to
+`{url}/api/ingest/events` with a 5 second timeout, using the key and URL it just wrote (the URL is `--url`, then
+`SERENO_URL` from `.env`, then the configured one). The outcome is one of:
+
+- Connected: Sereno answered `202`.
+- Key rejected: `401`, the key is invalid or has been revoked.
+- Missing URL or key: nothing is sent.
+- Delivery error: network failure, timeout or any other HTTP status.
+
+`sereno:install` exits with code 0 even when the test fails, because the `.env` file is already written. Read the
+message, fix the cause and run the test again whenever you want:
 
 ```bash
-composer config --global http-basic.gitea.ascario.dev YOUR_USERNAME YOUR_TOKEN
+php artisan sereno:test
 ```
 
-This writes to the global `auth.json` (`~/.composer/auth.json` or `~/.config/composer/auth.json`). In CI, keep the
-same structure in a project `auth.json` that is not committed, or set it through the `COMPOSER_AUTH` environment
-variable:
-
-```json
-{
-    "http-basic": {
-        "gitea.ascario.dev": { "username": "YOUR_USERNAME", "password": "YOUR_TOKEN" }
-    }
-}
-```
-
-Never commit `auth.json` or the token.
+`sereno:test` uses the current configuration (`SERENO_KEY` and `SERENO_URL`) and exits with code 0 when Sereno
+accepts the event and 1 in any other case.
 
 ## Configuration
 
-Create a project in Sereno, open its Integrations tab and create a source. The dialog shows the API key once, with
-the values below. Add them to `.env`:
+| Variable | Fallback | Default | Description |
+|---|---|---|---|
+| `SERENO_URL` | `SERENO_LOG_URL` | none | Base URL of the Sereno API, without a path (for example `https://api.example.com`). |
+| `SERENO_KEY` | `SERENO_LOG_KEY` | none | The source API key, sent as a Bearer token. |
+| `SERENO_TIMEOUT` | `SERENO_LOG_TIMEOUT` | `2` | Connect and total timeout in seconds per request. Capped at `10`; a missing, non numeric or non positive value falls back to `2`. |
+| `SERENO_LEVEL` | `SERENO_LOG_LEVEL` | `debug` | Minimum level sent (any Monolog/PSR level name). |
+| `SERENO_FALLBACK_CHANNEL` | `SERENO_LOG_FALLBACK_CHANNEL` | `daily` | Log channel that receives a warning when delivery fails. An empty value falls back to `daily`. |
 
-| Variable | Default | Description |
-|---|---|---|
-| `SERENO_LOG_URL` | none | Base URL of the Sereno API, without a path (for example `https://api.example.com`). |
-| `SERENO_LOG_KEY` | none | The source API key, sent as a Bearer token. |
-| `SERENO_LOG_TIMEOUT` | `2` | Connect and total timeout in seconds per request. Capped at `10`; a missing, non numeric or non positive value falls back to `2`. |
-| `SERENO_LOG_LEVEL` | `debug` | Minimum level sent (any Monolog/PSR level name). |
-| `SERENO_LOG_FALLBACK_CHANNEL` | `daily` | Log channel that receives a warning when delivery fails. An empty value falls back to `daily`. |
+The `SERENO_LOG_*` names from 0.1 keep working as a fallback during 0.x, but when both are set the `SERENO_*` value
+wins. Note that a variable that exists but is empty (`SERENO_KEY=`) overrides its fallback.
 
-Without `SERENO_LOG_URL` or `SERENO_LOG_KEY` the channel is inert: nothing is buffered and no HTTP request is made.
+Without a URL or a key the channel is inert: nothing is buffered and no HTTP request is made.
 
 To customize the configuration, publish it:
 
@@ -69,13 +98,12 @@ To customize the configuration, publish it:
 php artisan vendor:publish --tag=sereno-config
 ```
 
-This copies `config/sereno.php` to your application. If you run `config:cache`, remember to rebuild it after
-changing the variables.
+This copies `config/sereno.php` to your application.
 
 ## Usage
 
 The package registers a `sereno` channel in `logging.channels` unless your application already defines one. It does
-not touch your default channel: add `sereno` to the `stack` yourself in `config/logging.php`:
+not touch your default channel: `sereno:install` adds it to `LOG_STACK`, or add it to your own stack manually:
 
 ```php
 'stack' => [
@@ -85,23 +113,17 @@ not touch your default channel: add `sereno` to the `stack` yourself in `config/
 ],
 ```
 
-Or send to it directly:
-
-```php
-Log::channel('sereno')->error('Payment failed', ['order_id' => 42]);
-```
-
 To define the channel yourself (for example with another level), use the factory:
 
 ```php
 'sereno' => [
     'driver' => 'custom',
-    'via' => Ascario\Sereno\Logging\CreateSerenoLogger::class,
+    'via' => Sereno\Laravel\Logging\CreateSerenoLogger::class,
     'level' => 'warning',
 ],
 ```
 
-The channel `level` overrides `SERENO_LOG_LEVEL`.
+The channel `level` overrides `SERENO_LEVEL`.
 
 ### Events
 
@@ -125,3 +147,7 @@ anything is cut, the context carries `_truncated: true`.
   formatted, a warning with the reason is written to the fallback channel (`daily` by default) and the events of
   that batch are dropped. While Sereno is sending or reporting a failure, records that reach a Sereno handler are
   ignored by it, so a failure can never loop.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
