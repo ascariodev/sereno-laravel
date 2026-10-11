@@ -1,8 +1,8 @@
 <?php
 
-namespace Ascario\Sereno\Tests\Feature;
+namespace Sereno\Laravel\Tests\Feature;
 
-use Ascario\Sereno\Tests\TestCase;
+use Sereno\Laravel\Tests\TestCase;
 
 class ServiceProviderTest extends TestCase
 {

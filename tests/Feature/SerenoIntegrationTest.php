@@ -1,14 +1,14 @@
 <?php
 
-namespace Ascario\Sereno\Tests\Feature;
+namespace Sereno\Laravel\Tests\Feature;
 
-use Ascario\Sereno\Logging\CreateSerenoLogger;
-use Ascario\Sereno\Logging\SerenoLogHandler;
-use Ascario\Sereno\Tests\TestCase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Monolog\Level;
+use Sereno\Laravel\Logging\CreateSerenoLogger;
+use Sereno\Laravel\Logging\SerenoLogHandler;
+use Sereno\Laravel\Tests\TestCase;
 
 class SerenoIntegrationTest extends TestCase
 {

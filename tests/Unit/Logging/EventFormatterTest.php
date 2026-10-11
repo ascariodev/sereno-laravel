@@ -1,11 +1,11 @@
 <?php
 
-namespace Ascario\Sereno\Tests\Unit\Logging;
+namespace Sereno\Laravel\Tests\Unit\Logging;
 
-use Ascario\Sereno\Logging\EventFormatter;
-use Ascario\Sereno\Tests\TestCase;
 use DateTimeImmutable;
 use DateTimeZone;
+use Sereno\Laravel\Logging\EventFormatter;
+use Sereno\Laravel\Tests\TestCase;
 use Monolog\Level;
 use Monolog\LogRecord;
 use RuntimeException;

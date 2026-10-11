@@ -1,6 +1,6 @@
 <?php
 
-namespace Ascario\Sereno\Logging;
+namespace Sereno\Laravel\Logging;
 
 use Closure;
 use Illuminate\Contracts\Foundation\Application;

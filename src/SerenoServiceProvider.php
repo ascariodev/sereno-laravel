@@ -1,9 +1,9 @@
 <?php
 
-namespace Ascario\Sereno;
+namespace Sereno\Laravel;
 
-use Ascario\Sereno\Logging\CreateSerenoLogger;
 use Illuminate\Support\ServiceProvider;
+use Sereno\Laravel\Logging\CreateSerenoLogger;
 
 class SerenoServiceProvider extends ServiceProvider
 {

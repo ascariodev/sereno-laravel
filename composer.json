@@ -1,8 +1,8 @@
 {
-    "name": "ascario/sereno-laravel",
+    "name": "sereno/laravel",
     "description": "Sends Laravel logs to Sereno project channels.",
     "type": "library",
-    "license": "proprietary",
+    "license": "MIT",
     "require": {
         "php": "^8.3",
         "illuminate/contracts": "^13.0",
@@ -19,18 +19,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Ascario\\Sereno\\": "src/"
+            "Sereno\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Ascario\\Sereno\\Tests\\": "tests/"
+            "Sereno\\Laravel\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Ascario\\Sereno\\SerenoServiceProvider"
+                "Sereno\\Laravel\\SerenoServiceProvider"
             ]
         }
     },

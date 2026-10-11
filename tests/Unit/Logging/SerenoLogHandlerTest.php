@@ -1,10 +1,7 @@
 <?php
 
-namespace Ascario\Sereno\Tests\Unit\Logging;
+namespace Sereno\Laravel\Tests\Unit\Logging;
 
-use Ascario\Sereno\Logging\EventFormatter;
-use Ascario\Sereno\Logging\SerenoLogHandler;
-use Ascario\Sereno\Tests\TestCase;
 use Closure;
 use DateTimeImmutable;
 use Illuminate\Http\Client\Events\ResponseReceived;
@@ -18,6 +15,9 @@ use Monolog\Level;
 use Monolog\Logger;
 use Monolog\LogRecord;
 use RuntimeException;
+use Sereno\Laravel\Logging\EventFormatter;
+use Sereno\Laravel\Logging\SerenoLogHandler;
+use Sereno\Laravel\Tests\TestCase;
 
 class SerenoLogHandlerTest extends TestCase
 {
