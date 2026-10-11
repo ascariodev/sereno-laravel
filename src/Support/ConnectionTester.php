@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Sereno\Laravel\Logging\EventFormatter;
+use Sereno\Laravel\Logging\SerenoLogHandler;
 use Throwable;
 
 class ConnectionTester
@@ -22,8 +23,6 @@ class ConnectionTester
     public const FAILED = 'failed';
 
     public const TIMEOUT_SECONDS = 5;
-
-    private const INGEST_PATH = '/api/ingest/events';
 
     public function __construct(private readonly EventFormatter $formatter = new EventFormatter) {}
 
@@ -53,9 +52,10 @@ class ConnectionTester
         try {
             $response = Http::withToken($key)
                 ->acceptJson()
+                ->withoutRedirecting()
                 ->connectTimeout(self::TIMEOUT_SECONDS)
                 ->timeout(self::TIMEOUT_SECONDS)
-                ->post(rtrim($url, '/').self::INGEST_PATH, ['events' => [$this->formatter->format($record)]]);
+                ->post(rtrim($url, '/').SerenoLogHandler::INGEST_PATH, ['events' => [$this->formatter->format($record)]]);
         } catch (Throwable $e) {
             return ['status' => self::FAILED, 'detail' => $e->getMessage()];
         }
@@ -66,6 +66,10 @@ class ConnectionTester
 
         if ($response->status() === 401) {
             return ['status' => self::UNAUTHORIZED, 'detail' => null];
+        }
+
+        if ($response->redirect()) {
+            return ['status' => self::FAILED, 'detail' => 'HTTP '.$response->status().', check the URL scheme'];
         }
 
         return ['status' => self::FAILED, 'detail' => 'HTTP '.$response->status()];

@@ -84,6 +84,13 @@ class ConnectionTestTest extends TestCase
         $this->artisan('sereno:test')->expectsOutputToContain('HTTP 500')->assertFailed();
     }
 
+    public function test_test_redireccion_falla_con_detalle_claro(): void
+    {
+        Http::fake(['*' => Http::response('', 301, ['Location' => 'https://sereno.test/api/ingest/events'])]);
+
+        $this->artisan('sereno:test')->expectsOutputToContain('HTTP 301, check the URL scheme')->assertFailed();
+    }
+
     public function test_test_sin_url_no_envia(): void
     {
         config(['sereno.url' => null]);
