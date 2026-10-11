@@ -1,5 +1,5 @@
 {
-    "name": "sereno/laravel",
+    "name": "ascariodev/sereno-laravel",
     "description": "Sends Laravel logs to Sereno project channels.",
     "type": "library",
     "license": "MIT",
