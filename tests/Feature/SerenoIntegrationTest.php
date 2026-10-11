@@ -89,6 +89,24 @@ class SerenoIntegrationTest extends TestCase
         $this->assertSame(Level::Debug, $handler->getLevel());
     }
 
+    public function test_canal_vacio_hereda_el_nivel_de_la_config(): void
+    {
+        config(['sereno.url' => self::URL, 'sereno.key' => self::KEY, 'sereno.level' => 'error']);
+
+        $handler = (new CreateSerenoLogger)(['level' => ''])->getHandlers()[0];
+
+        $this->assertSame(Level::Error, $handler->getLevel());
+    }
+
+    public function test_nivel_invalido_no_vacio_lanza(): void
+    {
+        config(['sereno.url' => self::URL, 'sereno.key' => self::KEY]);
+
+        $this->expectException(\UnhandledMatchError::class);
+
+        (new CreateSerenoLogger)(['level' => 'nope']);
+    }
+
     private function flush(): void
     {
         foreach (Log::channel('sereno')->getLogger()->getHandlers() as $handler) {
