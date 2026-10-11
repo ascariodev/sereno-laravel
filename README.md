@@ -3,6 +3,8 @@
 Sends Laravel logs to a Sereno project channel. It adds a Monolog handler and a ready-to-use `sereno` log channel
 that posts events to the Sereno ingest endpoint (`POST {SERENO_URL}/api/ingest/events`) with a source API key.
 
+Source: https://github.com/ascariodev/sereno-laravel
+
 ## Requirements
 
 - PHP 8.3 or newer
@@ -14,7 +16,7 @@ Create a project in Sereno, open its Integrations page and choose "Create log so
 key (`wsk_...`) only once; if you lose it, rotate the key. Then, in your Laravel application:
 
 ```bash
-composer require sereno/laravel
+composer require ascariodev/sereno-laravel
 php artisan sereno:install wsk_your_key --url=https://your-sereno-api.example.com
 ```
 
