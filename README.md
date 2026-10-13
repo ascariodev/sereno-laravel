@@ -156,10 +156,10 @@ the group counters. Events sent without an `id` get one from the server and are 
   PHP shutdown function (covers fatal errors that skip normal termination). Events still buffered when the process
   is killed are lost.
 - **Fallback channel.** If a batch is still not delivered after the retry, or fails in a way that is not retried
-  (network error, timeout or a non 2xx response), or an event cannot be
-  formatted, a warning with the reason is written to the fallback channel (`daily` by default) and the events of
-  that batch are dropped. While Sereno is sending or reporting a failure, records that reach a Sereno handler are
-  ignored by it, so a failure can never loop.
+  (network error, timeout or a non 2xx response), or an event cannot be formatted, a warning with the reason is
+  written to the fallback channel (`daily` by default) and the events of that batch are dropped. While Sereno is
+  sending or reporting a failure, records that reach a Sereno handler are ignored by it, so a failure can never
+  loop.
 
 ## License
 
