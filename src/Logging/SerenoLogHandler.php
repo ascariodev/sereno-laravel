@@ -4,6 +4,7 @@ namespace Sereno\Laravel\Logging;
 
 use Closure;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,8 @@ class SerenoLogHandler extends AbstractHandler
     public const TIMEOUT_SECONDS = 2;
 
     public const MAX_TIMEOUT_SECONDS = 10;
+
+    public const MIN_RETRY_SECONDS = 0.5;
 
     public const DEFAULT_FALLBACK_CHANNEL = 'daily';
 
@@ -143,29 +146,62 @@ class SerenoLogHandler extends AbstractHandler
     }
 
     /**
+     * The same batch (same event ids) is sent again once after a connection failure, a timeout or a 5xx, so the
+     * server discards the events the first attempt already stored. Both attempts share MAX_TIMEOUT_SECONDS.
+     *
      * @param  list<array<string, mixed>>  $batch
      */
     private function send(array $batch): void
     {
+        $startedAt = hrtime(true);
+        $failure = $this->attempt($batch, $this->timeout);
+
+        if ($failure !== null && $failure['transient']) {
+            $remaining = self::MAX_TIMEOUT_SECONDS - (hrtime(true) - $startedAt) / 1e9;
+
+            if ($remaining >= self::MIN_RETRY_SECONDS) {
+                $failure = $this->attempt($batch, min($this->timeout, $remaining));
+            }
+        }
+
+        if ($failure !== null) {
+            $this->reportFailure('Sereno log delivery failed', $failure['context']);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $batch
+     * @return array{transient: bool, context: array<string, mixed>}|null
+     */
+    private function attempt(array $batch, int|float $timeout): ?array
+    {
         try {
             $response = Http::withToken($this->key)
                 ->acceptJson()
-                ->connectTimeout($this->timeout)
-                ->timeout($this->timeout)
+                ->connectTimeout($timeout)
+                ->timeout($timeout)
                 ->post($this->endpoint, ['events' => $batch]);
 
-            if (! $response->successful()) {
-                $this->reportFailure('Sereno log delivery failed', [
+            if ($response->successful()) {
+                return null;
+            }
+
+            return [
+                'transient' => $response->serverError(),
+                'context' => [
                     'status' => $response->status(),
                     'events' => count($batch),
                     'body' => mb_substr($response->body(), 0, 500),
-                ]);
-            }
+                ],
+            ];
         } catch (Throwable $e) {
-            $this->reportFailure('Sereno log delivery failed', [
-                'error' => $e->getMessage(),
-                'events' => count($batch),
-            ]);
+            return [
+                'transient' => $e instanceof ConnectionException,
+                'context' => [
+                    'error' => $e->getMessage(),
+                    'events' => count($batch),
+                ],
+            ];
         }
     }
 

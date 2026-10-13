@@ -4,6 +4,7 @@ namespace Sereno\Laravel\Tests\Unit\Logging;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Str;
 use Monolog\Level;
 use Monolog\LogRecord;
 use RuntimeException;
@@ -21,6 +22,24 @@ class EventFormatterTest extends TestCase
         $this->assertSame(['order' => 15], $event['context']);
         $this->assertArrayNotHasKey('fingerprint', $event);
         $this->assertSame('2026-10-07T15:30:45.123Z', $event['occurred_at']);
+    }
+
+    public function test_cada_evento_lleva_un_id_propio_de_1_a_64_caracteres(): void
+    {
+        $formatter = new EventFormatter;
+        $record = $this->record('x');
+
+        $first = $formatter->format($record);
+        $second = $formatter->format($record);
+
+        foreach ([$first, $second] as $event) {
+            $this->assertIsString($event['id']);
+            $this->assertGreaterThanOrEqual(1, mb_strlen($event['id']));
+            $this->assertLessThanOrEqual(64, mb_strlen($event['id']));
+            $this->assertTrue(Str::isUuid($event['id']));
+        }
+
+        $this->assertNotSame($first['id'], $second['id']);
     }
 
     public function test_mapea_todos_los_niveles_a_psr3(): void

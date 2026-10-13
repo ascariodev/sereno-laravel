@@ -10,6 +10,7 @@ use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Monolog\Logger;
@@ -203,17 +204,126 @@ class SerenoLogHandlerTest extends TestCase
         $logger->critical('sin conexión');
         $handler->close();
 
+        Http::assertSentCount(2);
         $this->assertTrue($this->fallbackRecords->hasWarningThatContains('Sereno log delivery failed'));
         $this->assertCount(1, $this->fallbackRecords->getRecords());
     }
 
-    public function test_usa_timeout_corto_sin_reintentos(): void
+    public function test_el_id_de_cada_evento_viaja_en_el_payload(): void
+    {
+        Http::fake(['*' => Http::response(['accepted' => 2], 202)]);
+        [$logger, $handler] = $this->logger();
+
+        $logger->error('uno');
+        $logger->error('dos');
+        $handler->close();
+
+        $ids = array_column(Http::recorded()->first()[0]['events'], 'id');
+        $this->assertCount(2, $ids);
+        $this->assertTrue(Str::isUuid($ids[0]));
+        $this->assertTrue(Str::isUuid($ids[1]));
+        $this->assertNotSame($ids[0], $ids[1]);
+    }
+
+    public function test_reintenta_una_vez_el_mismo_lote_tras_un_5xx(): void
+    {
+        Http::fake(['*' => Http::sequence()->push(status: 500)->push(['accepted' => 2], 202)]);
+        [$logger, $handler] = $this->logger();
+
+        $logger->error('uno');
+        $logger->error('dos');
+        $handler->close();
+
+        Http::assertSentCount(2);
+        [$first, $retry] = Http::recorded()->map(fn (array $pair) => $pair[0]['events'])->all();
+        $this->assertSame($first, $retry);
+        $this->assertCount(2, array_filter(array_column($retry, 'id'), Str::isUuid(...)));
+        $this->assertFalse($this->fallbackRecords->hasRecords(Level::Warning));
+    }
+
+    public function test_reintenta_una_vez_el_mismo_lote_tras_un_fallo_de_conexion(): void
+    {
+        Http::fake(['*' => Http::sequence()
+            ->pushFailedConnection('cURL error 28: Operation timed out')
+            ->push(['accepted' => 1], 202)]);
+        [$logger, $handler] = $this->logger();
+
+        $logger->critical('sin conexión');
+        $handler->close();
+
+        Http::assertSentCount(2);
+        [$first, $retry] = Http::recorded()->map(fn (array $pair) => $pair[0]['events'])->all();
+        $this->assertSame($first, $retry);
+        $this->assertFalse($this->fallbackRecords->hasRecords(Level::Warning));
+    }
+
+    public function test_no_reintenta_ante_un_4xx(): void
+    {
+        $statuses = [401, 413, 422, 429];
+        $sequence = Http::sequence();
+        foreach ($statuses as $status) {
+            $sequence->push(status: $status);
+        }
+        Http::fake(['*' => $sequence]);
+
+        foreach ($statuses as $sent => $status) {
+            $this->fallbackRecords->reset();
+            [$logger, $handler] = $this->logger();
+
+            $logger->error('rechazado');
+            $handler->close();
+
+            Http::assertSentCount($sent + 1);
+            $this->assertCount(1, $this->fallbackRecords->getRecords());
+            $this->assertSame($status, $this->fallbackRecords->getRecords()[0]->context['status']);
+        }
+    }
+
+    public function test_dos_5xx_seguidos_escriben_una_vez_en_el_respaldo(): void
+    {
+        Http::fake(['*' => Http::sequence()->push(status: 500)->push(status: 503)]);
+        [$logger, $handler] = $this->logger();
+
+        $logger->error('x');
+        $handler->close();
+
+        Http::assertSentCount(2);
+        $this->assertCount(1, $this->fallbackRecords->getRecords());
+        $this->assertSame(503, $this->fallbackRecords->getRecords()[0]->context['status']);
+    }
+
+    public function test_el_reintento_usa_lo_que_queda_del_tope_total(): void
+    {
+        $timeouts = [];
+        Http::fake(function (Request $request, array $requestOptions) use (&$timeouts) {
+            $timeouts[] = $requestOptions['timeout'];
+
+            return Http::response(status: 500);
+        });
+        $handler = new SerenoLogHandler(
+            self::URL,
+            self::KEY,
+            fallback: new Logger('daily', [$this->fallbackRecords]),
+            shutdownRegistrar: $this->captureShutdown(...),
+            timeout: SerenoLogHandler::MAX_TIMEOUT_SECONDS,
+        );
+
+        (new Logger('critical_alerts', [$handler]))->error('x');
+        $handler->close();
+
+        $this->assertCount(2, $timeouts);
+        $this->assertSame(SerenoLogHandler::MAX_TIMEOUT_SECONDS, $timeouts[0]);
+        $this->assertLessThan(SerenoLogHandler::MAX_TIMEOUT_SECONDS, $timeouts[1]);
+        $this->assertGreaterThan(SerenoLogHandler::MAX_TIMEOUT_SECONDS - 1, $timeouts[1]);
+    }
+
+    public function test_usa_timeout_corto_por_intento(): void
     {
         $options = null;
         Http::fake(function (Request $request, array $requestOptions) use (&$options) {
             $options = $requestOptions;
 
-            return Http::response(status: 500);
+            return Http::response(['accepted' => 1], 202);
         });
         [$logger, $handler] = $this->logger();
 
@@ -265,7 +375,7 @@ class SerenoLogHandlerTest extends TestCase
         $recursive->close();
         $recursive->close();
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
         $this->assertCount(1, $this->fallbackRecords->getRecords());
     }
 
