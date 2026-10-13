@@ -129,12 +129,17 @@ The channel `level` overrides `SERENO_LEVEL`.
 
 ### Events
 
-Each record becomes an event with `level`, `message`, `occurred_at` (UTC), optional `context` and optional
+Each record becomes an event with `id`, `level`, `message`, `occurred_at` (UTC), optional `context` and optional
 `fingerprint`. The fingerprint groups repeated events: pass `['fingerprint' => '...']` in the context, or log an
 exception under the `exception` key (the default for `Log::error($e->getMessage(), ['exception' => $e])`), which
 uses the exception class, file and line. Limits keep the payload valid for the API: messages are cut at 8192
 characters, context at 32 KB, 8 levels of depth and 50 items per array, and long strings are shortened. When
 anything is cut, the context carries `_truncated: true`.
+
+The `id` is a UUID generated once when the record is formatted, so it stays the same if the same batch is sent
+again. In the API the `id` is optional (1 to 64 characters, unique per log source): an event whose `id` was already
+received from the same source is accepted but discarded, so resending a batch never duplicates events or inflates
+the group counters. Events sent without an `id` get one from the server and are not protected against resends.
 
 ## Delivery behavior
 

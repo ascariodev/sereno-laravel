@@ -23,6 +23,23 @@ class EventFormatterTest extends TestCase
         $this->assertSame('2026-10-07T15:30:45.123Z', $event['occurred_at']);
     }
 
+    public function test_cada_evento_lleva_un_id_propio_de_1_a_64_caracteres(): void
+    {
+        $formatter = new EventFormatter;
+        $record = $this->record('x');
+
+        $first = $formatter->format($record);
+        $second = $formatter->format($record);
+
+        foreach ([$first, $second] as $event) {
+            $this->assertIsString($event['id']);
+            $this->assertGreaterThanOrEqual(1, mb_strlen($event['id']));
+            $this->assertLessThanOrEqual(64, mb_strlen($event['id']));
+        }
+
+        $this->assertNotSame($first['id'], $second['id']);
+    }
+
     public function test_mapea_todos_los_niveles_a_psr3(): void
     {
         $levels = ['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'];

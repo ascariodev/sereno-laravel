@@ -29,11 +29,12 @@ class EventFormatter
     private const TRUNCATED_KEY = '_truncated';
 
     /**
-     * @return array{level: string, message: string, context?: array<string, mixed>, occurred_at: string, fingerprint?: string}
+     * @return array{id: string, level: string, message: string, context?: array<string, mixed>, occurred_at: string, fingerprint?: string}
      */
     public function format(LogRecord $record): array
     {
         $event = [
+            'id' => (string) Str::uuid(),
             'level' => $record->level->toPsrLogLevel(),
             'message' => $this->message($record->message),
             'occurred_at' => $record->datetime->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z'),
