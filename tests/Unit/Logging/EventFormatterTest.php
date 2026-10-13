@@ -4,6 +4,7 @@ namespace Sereno\Laravel\Tests\Unit\Logging;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Str;
 use Monolog\Level;
 use Monolog\LogRecord;
 use RuntimeException;
@@ -35,6 +36,7 @@ class EventFormatterTest extends TestCase
             $this->assertIsString($event['id']);
             $this->assertGreaterThanOrEqual(1, mb_strlen($event['id']));
             $this->assertLessThanOrEqual(64, mb_strlen($event['id']));
+            $this->assertTrue(Str::isUuid($event['id']));
         }
 
         $this->assertNotSame($first['id'], $second['id']);

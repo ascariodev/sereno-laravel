@@ -85,7 +85,7 @@ accepts the event and 1 in any other case.
 |---|---|---|---|
 | `SERENO_URL` | `SERENO_LOG_URL` | none | Base URL of the Sereno API, without a path (for example `https://api.example.com`). |
 | `SERENO_KEY` | `SERENO_LOG_KEY` | none | The source API key, sent as a Bearer token. |
-| `SERENO_TIMEOUT` | `SERENO_LOG_TIMEOUT` | `2` | Connect and total timeout in seconds per request. Capped at `10`; a missing, non numeric or non positive value falls back to `2`. |
+| `SERENO_TIMEOUT` | `SERENO_LOG_TIMEOUT` | `2` | Connect and total timeout in seconds per request (a batch makes at most two, see Delivery behavior). Capped at `10`; a missing, non numeric or non positive value falls back to `2`. |
 | `SERENO_LEVEL` | `SERENO_LOG_LEVEL` | `debug` | Minimum level sent (any Monolog/PSR level name). |
 | `SERENO_FALLBACK_CHANNEL` | `SERENO_LOG_FALLBACK_CHANNEL` | `daily` | Log channel that receives a warning when delivery fails. An empty value falls back to `daily`. |
 
@@ -136,8 +136,8 @@ uses the exception class, file and line. Limits keep the payload valid for the A
 characters, context at 32 KB, 8 levels of depth and 50 items per array, and long strings are shortened. When
 anything is cut, the context carries `_truncated: true`.
 
-The `id` is a UUID generated once when the record is formatted, so it stays the same if the same batch is sent
-again. In the API the `id` is optional (1 to 64 characters, unique per log source): an event whose `id` was already
+The `id` is a UUID generated once when the record is formatted, so it stays the same when the handler retries the
+batch (see Delivery behavior). In the API the `id` is optional (1 to 64 characters, unique per log source): an event whose `id` was already
 received from the same source is accepted but discarded, so resending a batch never duplicates events or inflates
 the group counters. Events sent without an `id` get one from the server and are not protected against resends.
 
@@ -145,12 +145,18 @@ the group counters. Events sent without an `id` get one from the server and are 
 
 - **Buffered and batched.** Records are buffered in memory and sent in batches of at most 100 events per request.
   Reaching 100 buffered events flushes immediately.
-- **No retries.** Each batch is sent once. Logging never throws and never blocks the request beyond the timeout.
+- **One retry, only on transient failures.** If a request fails with a network error, a timeout or a 5xx response,
+  the same batch, with the same event ids, is sent once more; the server discards the events it already stored, so
+  the retry never duplicates. Any 4xx response (for example `401`, `413`, `422` or `429`) is not retried. Both
+  attempts share a budget of 10 seconds: the retry uses the configured timeout or what is left of the budget,
+  whichever is lower, and is skipped when less than half a second is left. With the default timeout a batch can
+  block for up to 4 seconds. Logging never throws.
 - **Flush points.** The buffer is flushed when the application terminates (after the response in PHP-FPM), on every
   queue worker `Looping` event (workers never terminate between jobs), when the handler is closed or reset, and in a
   PHP shutdown function (covers fatal errors that skip normal termination). Events still buffered when the process
   is killed are lost.
-- **Fallback channel.** If a request fails (network error, timeout or a non 2xx response) or an event cannot be
+- **Fallback channel.** If a batch is still not delivered after the retry, or fails in a way that is not retried
+  (network error, timeout or a non 2xx response), or an event cannot be
   formatted, a warning with the reason is written to the fallback channel (`daily` by default) and the events of
   that batch are dropped. While Sereno is sending or reporting a failure, records that reach a Sereno handler are
   ignored by it, so a failure can never loop.
