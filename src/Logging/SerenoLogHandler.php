@@ -47,6 +47,8 @@ class SerenoLogHandler extends AbstractHandler
 
     private readonly int|float $timeout;
 
+    private readonly Closure $clock;
+
     public function __construct(
         ?string $url,
         ?string $key,
@@ -57,6 +59,7 @@ class SerenoLogHandler extends AbstractHandler
         ?Closure $shutdownRegistrar = null,
         int|float|string|null $timeout = null,
         private readonly string $fallbackChannel = self::DEFAULT_FALLBACK_CHANNEL,
+        ?Closure $clock = null,
     ) {
         parent::__construct($level, $bubble);
 
@@ -67,6 +70,7 @@ class SerenoLogHandler extends AbstractHandler
         $this->key = $key === '' ? null : $key;
         $this->formatter = $formatter ?? new EventFormatter;
         $this->timeout = $this->normalizeTimeout($timeout);
+        $this->clock = $clock ?? static fn (): float => hrtime(true) / 1e9;
 
         if ($this->isConfigured()) {
             $this->registerFlushPoints($shutdownRegistrar);
@@ -153,11 +157,11 @@ class SerenoLogHandler extends AbstractHandler
      */
     private function send(array $batch): void
     {
-        $startedAt = hrtime(true);
+        $startedAt = ($this->clock)();
         $failure = $this->attempt($batch, $this->timeout);
 
         if ($failure !== null && $failure['transient']) {
-            $remaining = self::MAX_TIMEOUT_SECONDS - (hrtime(true) - $startedAt) / 1e9;
+            $remaining = self::MAX_TIMEOUT_SECONDS - (($this->clock)() - $startedAt);
 
             if ($remaining >= self::MIN_RETRY_SECONDS) {
                 $failure = $this->attempt($batch, min($this->timeout, $remaining));
