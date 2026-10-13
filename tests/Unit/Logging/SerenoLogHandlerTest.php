@@ -317,6 +317,31 @@ class SerenoLogHandlerTest extends TestCase
         $this->assertGreaterThan(SerenoLogHandler::MAX_TIMEOUT_SECONDS - 1, $timeouts[1]);
     }
 
+    public function test_no_reintenta_si_queda_menos_del_minimo_del_tope_total(): void
+    {
+        $attempts = 0;
+        Http::fake(function () use (&$attempts) {
+            $attempts++;
+            usleep((int) ((SerenoLogHandler::MAX_TIMEOUT_SECONDS - SerenoLogHandler::MIN_RETRY_SECONDS + 0.05) * 1_000_000));
+
+            return Http::response(status: 500);
+        });
+        $handler = new SerenoLogHandler(
+            self::URL,
+            self::KEY,
+            fallback: new Logger('daily', [$this->fallbackRecords]),
+            shutdownRegistrar: $this->captureShutdown(...),
+            timeout: SerenoLogHandler::MAX_TIMEOUT_SECONDS,
+        );
+
+        (new Logger('critical_alerts', [$handler]))->error('x');
+        $handler->close();
+
+        $this->assertSame(1, $attempts);
+        $this->assertCount(1, $this->fallbackRecords->getRecords());
+        $this->assertSame(500, $this->fallbackRecords->getRecords()[0]->context['status']);
+    }
+
     public function test_usa_timeout_corto_por_intento(): void
     {
         $options = null;
